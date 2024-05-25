@@ -12,7 +12,7 @@ spark = (SparkSession
          .builder
          .master('local[*]')
          .appName('YouTubeCommentsProcessing')
-         .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1")
+         .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1,org.mongodb.spark:mongo-spark-connector_2.12:3.0.1")
          .getOrCreate())
 
 # Fonction de nettoyage des commentaires
@@ -36,7 +36,7 @@ kafka_df = (spark
             .format("kafka")
             .option("kafka.bootstrap.servers", "localhost:9092")
             .option("subscribe", "test-sentiments")
-            .option("startingOffsets", "latest") completed only the new messages
+            .option("startingOffsets", "latest")  # Read only the new messages
             .load())
 
 # Convertir les données Kafka en DataFrame avec le schéma défini
@@ -50,6 +50,8 @@ query = (cleaned_df
          .writeStream
          .outputMode("append")  # Utiliser 'append' pour ajouter continuellement de nouvelles lignes
          .format("console")
+        .option("uri", "mongodb://localhost:27017/mydatabase.mycollection")
+
          .start())
 
 # Attendre la fin de la requête
