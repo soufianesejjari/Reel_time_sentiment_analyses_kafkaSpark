@@ -27,7 +27,8 @@ schema = StructType([
     StructField("source", StringType(), True),
     StructField("date", StringType(), True),
     StructField("comment", StringType(), True),
-    StructField("sentiment", StringType(), True)
+    StructField("topic", StringType(), True)
+
 ])
 
 # Lire le flux de Kafka

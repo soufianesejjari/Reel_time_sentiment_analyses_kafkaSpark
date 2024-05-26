@@ -6,7 +6,12 @@ from pyspark.sql import functions as F
 from pyspark.sql.functions import col, udf
 from pyspark.sql.types import StringType, StructType, StructField
 from textblob import TextBlob
-from pymongo import MongoClient
+from nltk.corpus import stopwords
+import re
+
+# Télécharger les stop words de NLTK (à exécuter une fois en local)
+import nltk
+nltk.download('stopwords')
 
 # Initialiser la session Spark
 spark = (SparkSession
@@ -16,9 +21,21 @@ spark = (SparkSession
          .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1,org.mongodb.spark:mongo-spark-connector_2.12:3.0.1")
          .getOrCreate())
 
+# Liste des stop words
+stop_words = set(stopwords.words('english'))
+
 # Fonction de nettoyage des commentaires
 def clean_comment(comment):
-    cleaned_comment = comment.strip().lower()
+    # Convertir en minuscules
+    comment = comment.lower()
+    # Supprimer les hashtags et les mentions
+    comment = re.sub(r'@\w+|#\w+', '', comment)
+    # Supprimer les caractères non alphabétiques
+    comment = re.sub(r'[^a-z\s]', '', comment)
+    # Supprimer les stop words
+    words = comment.split()
+    filtered_words = [word for word in words if word not in stop_words]
+    cleaned_comment = ' '.join(filtered_words)
     return cleaned_comment
 
 # UDF (User Defined Function) pour nettoyer les commentaires
@@ -38,7 +55,7 @@ kafka_df = (spark
             .format("kafka")
             .option("kafka.bootstrap.servers", "localhost:9092")
             .option("subscribe", "test-sentiments")
-            .option("startingOffsets", "latest")  # Read only the new messages
+            .option("startingOffsets", "latest")  # Lire uniquement les nouveaux messages
             .load())
 
 # Convertir les données Kafka en DataFrame avec le schéma défini
@@ -75,3 +92,4 @@ query = (sentiment_df
 
 # Attendre la fin de la requête
 query.awaitTermination()
+

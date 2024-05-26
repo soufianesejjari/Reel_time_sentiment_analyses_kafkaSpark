@@ -19,7 +19,7 @@ class YoutubeProducer:
             part="snippet",
             videoId=video_id,
             order="time",
-            maxResults=10
+            maxResults=5
         )
         response = request.execute()
 
@@ -34,7 +34,7 @@ class YoutubeProducer:
                 if comment_time >= one_minute_ago:
                     message = {
                         'source': 'youtube',
-                        'commentDate': comment_time.strftime("%Y-%m-%d %H:%M:%S"),
+                        'date': comment_time.strftime("%Y-%m-%d %H:%M:%S"),
                         'videoId': video_id,
                         'comment': comment,
                         'topic': keyword
@@ -50,7 +50,7 @@ class YoutubeProducer:
 
 if __name__ == "__main__":
     server = "localhost:9092"  # replace with your server
-    api_key = "AIzaSyAixx4LjLBggdH2lJZHLUljyUgRGWtfznI"  # replace with your YouTube API key
+    api_key = "AIzaSyCUbp2ZcYffR2bHvLvAn1J7QqAWsEjgo3Q"  # replace with your YouTube API key
     video_id = "F6PqxbvOCUI"  # replace with your video ID
 
     youtube_producer = YoutubeProducer(server, api_key)

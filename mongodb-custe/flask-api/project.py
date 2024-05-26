@@ -25,6 +25,10 @@ st.title("Sentiment Analysis Report")
 
 # Sidebar filters
 st.sidebar.header("Filter Options")
+topic_filter = st.sidebar.selectbox(
+    "Select Topic:", options=df["topic"].unique(), index=0
+)
+
 source_filter = st.sidebar.multiselect(
     "Select Source(s):", options=df["source"].unique(), default=df["source"].unique()
 )
@@ -32,7 +36,7 @@ source_filter = st.sidebar.multiselect(
 sentiment_filter = st.sidebar.multiselect(
     "Select Sentiment(s):",
     options=df["sentiment"].unique(),
-    default=["positive", "negative", "neutral"],
+    default=df["sentiment"].unique(),
 )
 
 date_filter = st.sidebar.date_input(
@@ -42,11 +46,25 @@ date_filter = st.sidebar.date_input(
 
 # Apply filters
 filtered_df = df[
-    (df["source"].isin(source_filter))
+    (df["topic"] == topic_filter)
+    & (df["source"].isin(source_filter))
     & (df["sentiment"].isin(sentiment_filter))
     & (df["date"] >= pd.to_datetime(date_filter[0]))
     & (df["date"] <= pd.to_datetime(date_filter[1]))
 ]
+
+# Display summary cards
+st.header("Summary Statistics")
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.metric(label="Number of Comments", value=len(filtered_df))
+
+with col2:
+    st.metric(label="Number of Topics", value=filtered_df["topic"].nunique())
+
+with col3:
+    st.metric(label="Number of Sources", value=filtered_df["source"].nunique())
 
 # Display filtered data
 st.header("Filtered Data")
@@ -54,7 +72,7 @@ st.dataframe(filtered_df)
 
 # Display sentiment distribution chart and source distribution chart side by side
 st.header("Sentiment and Source Distribution")
-col1, col2 = st.beta_columns(2)
+col1, col2 = st.columns(2)
 
 with col1:
     sentiment_chart = (
@@ -77,18 +95,18 @@ with col2:
 # Line chart for sentiment change over time
 st.header("Sentiment Change Over Time")
 
-# Calculate percentage of positive sentiments for each source over time
+# Calculate percentage of sentiments for each source over time
 sentiment_counts = (
-    df.groupby(["date", "source", "sentiment"]).size().unstack(fill_value=0)
+    filtered_df.groupby(["date", "source", "sentiment"]).size().unstack(fill_value=0)
 )
 sentiment_counts["total"] = sentiment_counts.sum(axis=1)
-sentiment_counts["percentage_happiness"] = (
-    sentiment_counts["positive"] / sentiment_counts["total"] * 100
+sentiment_counts["positive_percentage"] = (
+    sentiment_counts["POSITIVE"] / sentiment_counts["total"] * 100
 )
 
 sentiment_counts.reset_index(inplace=True)
 sentiment_counts_melted = pd.melt(
-    sentiment_counts, id_vars=["date", "source"], value_vars=["percentage_happiness"]
+    sentiment_counts, id_vars=["date", "source"], value_vars=["positive_percentage"]
 )
 
 line_chart = (
@@ -108,7 +126,6 @@ st.altair_chart(line_chart)
 # Display most frequently used words in comments
 st.header("Most Frequently Used Words")
 
-
 def get_most_common_words(comments, num_words=10):
     all_comments = " ".join(comments)
     all_comments = re.sub(r"[^\w\s]", "", all_comments).lower()
@@ -116,8 +133,7 @@ def get_most_common_words(comments, num_words=10):
     most_common_words = Counter(words).most_common(num_words)
     return pd.DataFrame(most_common_words, columns=["word", "count"])
 
-
-most_common_words_df = get_most_common_words(filtered_df["comment"])
+most_common_words_df = get_most_common_words(filtered_df["cleaned_comment"], num_words=5)
 
 word_chart = (
     alt.Chart(most_common_words_df)

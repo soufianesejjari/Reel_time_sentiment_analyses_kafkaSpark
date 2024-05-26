@@ -7,7 +7,7 @@ from YoutubeProducer import YoutubeProducer
 class MainProducer:
     def __init__(self, server, api_key):
         self.server = server
-        self.api_key = "AIzaSyAixx4LjLBggdH2lJZHLUljyUgRGWtfznI"  # replace with your YouTube API k
+        self.api_key = "AIzaSyCUbp2ZcYffR2bHvLvAn1J7QqAWsEjgo3Q"  # replace with your YouTube API k
 
     def run_producers(self, hespress_keyword, youtube_video_id, start_hespress, start_twitter, start_youtube):
         if start_hespress:
@@ -40,7 +40,7 @@ def main():
     st.title("Real-Time Data Producers")
 
     server = st.text_input("Kafka Server", "localhost:9092")
-    api_key = st.text_input("YouTube API Key","AIzaSyAixx4LjLBggdH2lJZHLUljyUgRGWtfznI")
+    api_key = st.text_input("YouTube API Key","AIzaSyCUbp2ZcYffR2bHvLvAn1J7QqAWsEjgo3Q")
 
     if "keyword_sets" not in st.session_state:
         st.session_state.keyword_sets = []
