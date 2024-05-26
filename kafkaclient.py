@@ -22,12 +22,12 @@ def clean_comment(comment):
 
 # UDF (User Defined Function) pour nettoyer les commentaires
 clean_comment_udf = udf(clean_comment, StringType())
-
 # Schéma des données Kafka
 schema = StructType([
     StructField("source", StringType(), True),
-    StructField("commentDate", StringType(), True),
-    StructField("comment", StringType(), True)
+    StructField("date", StringType(), True),
+    StructField("comment", StringType(), True),
+    StructField("sentiment", StringType(), True)
 ])
 
 # Lire le flux de Kafka
@@ -44,14 +44,14 @@ json_df = kafka_df.selectExpr("CAST(value AS STRING)").select(F.from_json("value
 
 # Nettoyer les commentaires
 cleaned_df = json_df.withColumn("cleaned_comment", clean_comment_udf(col("comment")))
+def write_mongodb(df, epoch_id):
+    df.write.format("mongo").mode("append").option("uri", "mongodb://localhost:27017/mydatabase.mycollection").save()
 
 # Démarrer la requête en écrivant les résultats dans la console
 query = (cleaned_df
          .writeStream
          .outputMode("append")  # Utiliser 'append' pour ajouter continuellement de nouvelles lignes
-         .format("console")
-        .option("uri", "mongodb://localhost:27017/mydatabase.mycollection")
-
+                  .foreachBatch(write_mongodb)
          .start())
 
 # Attendre la fin de la requête

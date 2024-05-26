@@ -1,53 +1,77 @@
+import findspark
+findspark.init()
+import pyspark
 from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
 from pyspark.sql.functions import col, udf
-from pyspark.sql.types import StringType
-from pyspark.streaming import StreamingContext
-from pyspark.streaming.kafka import KafkaUtils
-import json
+from pyspark.sql.types import StringType, StructType, StructField
+from textblob import TextBlob
+from pymongo import MongoClient
 
 # Initialiser la session Spark
-spark = SparkSession.builder \
-    .appName("YouTubeCommentsProcessing") \
-    .Master("spark://localhost:7077") \
-    .getOrCreate()
-
-# Initialiser le contexte de streaming avec un intervalle de 60 secondes
-ssc = StreamingContext(spark.sparkContext, 60)
-
-# Configurer Kafka
-kafka_brokers = "localhost:9092"
-kafka_topic = "webscraping-data"
-
-# Créer un flux de Kafka
-kafka_stream = KafkaUtils.createDirectStream(ssc, [kafka_topic], {"metadata.broker.list": kafka_brokers})
+spark = (SparkSession
+         .builder
+         .master('local[*]')
+         .appName('YouTubeCommentsProcessing')
+         .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1,org.mongodb.spark:mongo-spark-connector_2.12:3.0.1")
+         .getOrCreate())
 
 # Fonction de nettoyage des commentaires
 def clean_comment(comment):
-    # Exemples de nettoyage : suppression des espaces superflus, conversion en minuscule
     cleaned_comment = comment.strip().lower()
     return cleaned_comment
 
 # UDF (User Defined Function) pour nettoyer les commentaires
 clean_comment_udf = udf(clean_comment, StringType())
 
-# Fonction de traitement des RDDs
-def process_rdd(rdd):
-    if not rdd.isEmpty():
-        # Convertir l'RDD en DataFrame
-        df = spark.read.json(rdd.map(lambda x: x[1]))
+# Schéma des données Kafka
+schema = StructType([
+    StructField("source", StringType(), True),
+    StructField("date", StringType(), True),
+    StructField("comment", StringType(), True),
+    StructField("topic", StringType(), True)
+])
 
-        # Nettoyer les commentaires
-        df_cleaned = df.withColumn("cleaned_comment", clean_comment_udf(col("comment")))
+# Lire le flux de Kafka
+kafka_df = (spark
+            .readStream
+            .format("kafka")
+            .option("kafka.bootstrap.servers", "localhost:9092")
+            .option("subscribe", "test-sentiments")
+            .option("startingOffsets", "latest")  # Read only the new messages
+            .load())
 
-        # Sélectionner les colonnes pertinentes
-        df_result = df_cleaned.select("commentDate", "cleaned_comment", "source")
+# Convertir les données Kafka en DataFrame avec le schéma défini
+json_df = kafka_df.selectExpr("CAST(value AS STRING)").select(F.from_json("value", schema).alias("data")).select("data.*")
 
-        # Afficher le DataFrame nettoyé
-        df_result.show()
+# Nettoyer les commentaires
+cleaned_df = json_df.withColumn("cleaned_comment", clean_comment_udf(col("comment")))
 
-# Traiter les messages de Kafka
-kafka_stream.foreachRDD(process_rdd)
+# Fonction UDF pour analyser les sentiments avec TextBlob
+def analyze_sentiment(comment):
+    analysis = TextBlob(comment)
+    if analysis.sentiment.polarity > 0:
+        return 'POSITIVE'
+    elif analysis.sentiment.polarity == 0:
+        return 'NEUTRAL'
+    else:
+        return 'NEGATIVE'
 
-# Démarrer le contexte de streaming
-ssc.start()
-ssc.awaitTermination()
+sentiment_udf = udf(analyze_sentiment, StringType())
+
+# Appliquer l'analyse des sentiments
+sentiment_df = cleaned_df.withColumn("sentiment", sentiment_udf(col("cleaned_comment")))
+
+# Fonction pour écrire dans MongoDB
+def write_mongodb(df, epoch_id):
+    df.write.format("mongo").mode("append").option("uri", "mongodb://localhost:27017/mydatabase.mycollection").save()
+
+# Démarrer la requête en écrivant les résultats dans MongoDB
+query = (sentiment_df
+         .writeStream
+         .outputMode("append")  # Utiliser 'append' pour ajouter continuellement de nouvelles lignes
+         .foreachBatch(write_mongodb)
+         .start())
+
+# Attendre la fin de la requête
+query.awaitTermination()

@@ -13,8 +13,11 @@ producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
 video_id = "test_video_id"
 
 # List of test comments
-comments = ['This is a test comment', 'Another test comment', 'Yet another test comment']
-
+comments = [
+    "حبنا لك لن ينتهي",  # "هادشي واحد الفرحان بزاف" t                    ranslates to "This is a very happy man"
+    "لا لا هو حزين بزاف حزين تعليق" ,
+      "كلنا ابن كيران لمتافق معايا يدير جيم"  # "لا لا هو حزين بزاف حزين" translates to "No no, he's very sad, very sad"
+] 
 while True:
     # Get the current time
     comment_time = datetime.now()
@@ -24,10 +27,12 @@ while True:
 
     # Create a test message
     message = {
-        'source': 'youtube',
-        'commentDate': comment_time.strftime("%Y-%m-%d %H:%M:%S"),
+        'source': 'facebook',
+        'date': comment_time.strftime("%Y-%m-%d %H:%M:%S"),
         'videoId': video_id,
-        'comment': comment
+        'comment': comment,
+        'topic': 'negative',
+
     }
 
     # Send the message to Kafka
@@ -37,4 +42,4 @@ while True:
     print(f"Sent message: {message}")
 
     # Wait for 5 seconds before sending the next message
-    time.sleep(5)
+    time.sleep(15)

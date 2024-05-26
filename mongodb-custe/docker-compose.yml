@@ -1,0 +1,25 @@
+version: "3.7"
+
+services:
+  flask-api:
+    build: ./flask-api
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongo-data:/data/db
+
+  mongo-express:
+    image: mongo-express:latest
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+    depends_on:
+      - mongo
