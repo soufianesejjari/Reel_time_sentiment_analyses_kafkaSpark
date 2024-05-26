@@ -81,7 +81,7 @@ sentiment_df = cleaned_df.withColumn("sentiment", sentiment_udf(col("cleaned_com
 
 # Fonction pour écrire dans MongoDB
 def write_mongodb(df, epoch_id):
-    df.write.format("mongo").mode("append").option("uri", "mongodb://localhost:27017/mydatabase.mycollection").save()
+    df.write.format("mongo").mode("append").option("uri", "mongodb://localhost:27017/comment_analysis.comments").save()
 
 # Démarrer la requête en écrivant les résultats dans MongoDB
 query = (sentiment_df

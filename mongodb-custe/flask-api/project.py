@@ -4,6 +4,10 @@ import altair as alt
 from collections import Counter
 import re
 import requests
+from streamlit_autorefresh import st_autorefresh
+
+# Auto refresh every 20 seconds
+st_autorefresh(interval=20000, key="data_refresh")
 
 # API endpoint URL
 api_url = "http://127.0.0.1:5000/"
@@ -21,13 +25,10 @@ else:
 df["date"] = pd.to_datetime(df["date"])
 
 # Streamlit main page
-st.title("Sentiment Analysis Report")
+st.title("📊 Sentiment Analysis Report")
 
 # Sidebar filters
 st.sidebar.header("Filter Options")
-topic_filter = st.sidebar.selectbox(
-    "Select Topic:", options=df["topic"].unique(), index=0
-)
 
 source_filter = st.sidebar.multiselect(
     "Select Source(s):", options=df["source"].unique(), default=df["source"].unique()
@@ -39,6 +40,12 @@ sentiment_filter = st.sidebar.multiselect(
     default=df["sentiment"].unique(),
 )
 
+topic_filter = st.sidebar.multiselect(
+    "Select Topic(s):",
+    options=df["topic"].unique(),
+    default=df["topic"].unique(),
+)
+
 date_filter = st.sidebar.date_input(
     "Select Date Range:",
     value=[pd.to_datetime(df["date"].min()), pd.to_datetime(df["date"].max())],
@@ -46,7 +53,7 @@ date_filter = st.sidebar.date_input(
 
 # Apply filters
 filtered_df = df[
-    (df["topic"] == topic_filter)
+    (df["topic"].isin(topic_filter))
     & (df["source"].isin(source_filter))
     & (df["sentiment"].isin(sentiment_filter))
     & (df["date"] >= pd.to_datetime(date_filter[0]))
@@ -58,13 +65,13 @@ st.header("Summary Statistics")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.metric(label="Number of Comments", value=len(filtered_df))
+    st.metric(label="📝 Number of Comments", value=len(filtered_df))
 
 with col2:
-    st.metric(label="Number of Topics", value=filtered_df["topic"].nunique())
+    st.metric(label="📌 Number of Topics", value=filtered_df["topic"].nunique())
 
 with col3:
-    st.metric(label="Number of Sources", value=filtered_df["source"].nunique())
+    st.metric(label="🔗 Number of Sources", value=filtered_df["source"].nunique())
 
 # Display filtered data
 st.header("Filtered Data")
@@ -133,15 +140,21 @@ def get_most_common_words(comments, num_words=10):
     most_common_words = Counter(words).most_common(num_words)
     return pd.DataFrame(most_common_words, columns=["word", "count"])
 
-most_common_words_df = get_most_common_words(filtered_df["cleaned_comment"], num_words=5)
-
-word_chart = (
-    alt.Chart(most_common_words_df)
-    .mark_bar()
-    .encode(x="count", y=alt.Y("word", sort="-x"), color="count")
-    .properties(width=600, height=400)
-)
-st.altair_chart(word_chart)
+# Top 5 words by topic
+st.header("Top 5 Words by Topic")
+topics = filtered_df['topic'].unique()
+for topic in topics:
+    st.subheader(f"Topic: {topic}")
+    topic_df = filtered_df[filtered_df['topic'] == topic]
+    most_common_words_df = get_most_common_words(topic_df["cleaned_comment"], num_words=5)
+    
+    word_chart = (
+        alt.Chart(most_common_words_df)
+        .mark_bar()
+        .encode(x="count", y=alt.Y("word", sort="-x"), color="count")
+        .properties(width=600, height=400)
+    )
+    st.altair_chart(word_chart)
 
 # Add text input for searching comments
 st.header("Search Comments")

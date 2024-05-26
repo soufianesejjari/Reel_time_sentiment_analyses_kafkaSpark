@@ -46,12 +46,11 @@ class YoutubeProducer:
     def run(self, video_id,keyword):
         while True:
             self.scrape_comments(video_id,keyword)
-            time.sleep(20)
+            time.sleep(60)
 
 if __name__ == "__main__":
     server = "localhost:9092"  # replace with your server
     api_key = "AIzaSyCUbp2ZcYffR2bHvLvAn1J7QqAWsEjgo3Q"  # replace with your YouTube API key
     video_id = "F6PqxbvOCUI"  # replace with your video ID
 
-    youtube_producer = YoutubeProducer(server, api_key)
-    youtube_producer.run(video_id)
+*

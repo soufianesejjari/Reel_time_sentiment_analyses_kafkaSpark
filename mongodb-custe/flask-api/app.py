@@ -7,7 +7,7 @@ app = Flask(__name__)
 # MongoDB connection details
 mongo_host = os.environ.get("MONGO_HOST", "localhost")
 mongo_port = int(os.environ.get("MONGO_PORT", 27017))
-mongo_db = os.environ.get("MONGO_DB", "mydatabase")
+mongo_db = os.environ.get("MONGO_DB", "comment_analysis")
 
 # Connect to MongoDB
 try:
@@ -21,7 +21,7 @@ except Exception as e:
 @app.route("/")
 def home():
     try:
-        comments_collection = db.mycollection
+        comments_collection = db.comments
         comments = list(
             comments_collection.find({}, {"_id": 0})
         )  # Exclude the '_id' field
