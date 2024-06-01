@@ -7,7 +7,9 @@ import pandas as pd
 from kafka import KafkaProducer
 import json
 from datetime import datetime
-
+options = webdriver.ChromeOptions()
+options.add_argument('--headless')
+driver = webdriver.Chrome('C:/Users/sejja/chromedriver', options=options)
 class HespressProducer:
     def __init__(self, server):
         self.server = server
@@ -16,7 +18,6 @@ class HespressProducer:
         self.producer = KafkaProducer(bootstrap_servers=self.bootstrap_servers)
 
     def hespress_articles(self, mots, rep=20):
-        driver = webdriver.Chrome('C:/Users/sejja/chromedriver')
         link = "https://en.hespress.com/?s=" + mots
         driver.get(link)
 
@@ -59,7 +60,6 @@ class HespressProducer:
 
     def extract_data(self, url):
         try:
-            driver = webdriver.Chrome('C:/Users/sejja/chromedriver')
             driver.get(url)
             time.sleep(1)
 
